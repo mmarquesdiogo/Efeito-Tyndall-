@@ -63,7 +63,8 @@ output{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 
 /* ---------- abas ---------- */
 .tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);border-bottom:1px solid var(--line)}
-.tabs::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:env(safe-area-inset-top,0px);background:var(--bg)}
+/* faixa fixa sob a barra de status do iPad: esconde o conteúdo que rola por baixo dela, sem cobrir nada com a página parada */
+body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:11;pointer-events:none}
 .tabs-in{display:flex;align-items:center;gap:12px}
 .tablist{display:flex;gap:4px;min-width:0}
 .fs-btn{margin-left:auto;flex:none;appearance:none;border:1px solid var(--line-2);background:none;border-radius:8px;padding:6px 11px;color:var(--ink-2);font-size:var(--fs-sm);font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:color .15s,border-color .15s}
