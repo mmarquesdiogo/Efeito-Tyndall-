@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tyndall">
+<meta name="theme-color" content="#0c0f14">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<title>Simulador do Efeito Tyndall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout: uma bancada óptica no escuro. Seções em abas; o palco (sala escura) é a superfície mais escura da página. */
+:root{
+  color-scheme: dark;
+  --bg:#0c0f14;
+  --panel:#12161d;
+  --panel-2:#181d26;
+  --stage:#05070a;
+  --line:#232a35;
+  --line-2:#323b49;
+  --ink:#e8ecf2;
+  --ink-2:#a9b2c1;
+  --ink-3:#7c869a;
+  --focus:#9ec5ff;
+  --sol:#3987e5;
+  --col:#199e70;
+  --sus:#d95926;
+  --laser-red:#ff3b2f;
+  --f-display:"Instrument Serif","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --f-sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-xs:12px; --fs-sm:13.5px; --fs-base:15.5px; --fs-md:17px; --fs-lg:21px;
+  --fs-xl:clamp(26px,3vw,34px); --fs-2xl:clamp(40px,5.4vw,62px);
+  --r-lg:16px; --r-md:12px; --r-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font-family:var(--f-sans);font-size:var(--fs-base);line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1200px;margin-inline:auto;padding-inline:clamp(16px,4vw,40px)}
+.eyebrow{margin:0;font-size:var(--fs-xs);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+h1,h2,h3,h4{text-wrap:balance;margin:0}
+h1{font-family:var(--f-display);font-weight:400;font-size:var(--fs-2xl);line-height:.95;letter-spacing:-.01em}
+h2{font-family:var(--f-display);font-weight:400;font-size:var(--fs-xl);line-height:1.05}
+h3{font-size:var(--fs-lg);font-weight:600;line-height:1.25;letter-spacing:-.005em}
+h4{font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+p{margin:0}
+output{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* ---------- topo ---------- */
+.top{display:grid;padding-block:clamp(22px,3.4vw,40px) 22px}
+.top-text{display:grid;gap:10px;min-width:0}
+.lead{max-width:64ch;color:var(--ink-2)}
+
+/* ---------- abas ---------- */
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);border-bottom:1px solid var(--line)}
+.tabs::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:env(safe-area-inset-top,0px);background:var(--bg)}
+.tabs-in{display:flex;align-items:center;gap:12px}
+.tablist{display:flex;gap:4px;min-width:0}
+.fs-btn{margin-left:auto;flex:none;appearance:none;border:1px solid var(--line-2);background:none;border-radius:8px;padding:6px 11px;color:var(--ink-2);font-size:var(--fs-sm);font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:color .15s,border-color .15s}
+.fs-btn:hover{color:var(--ink);border-color:var(--ink-3)}
+.tab{appearance:none;border:0;background:none;padding:14px 12px 12px;cursor:pointer;color:var(--ink-3);font-weight:500;font-size:var(--fs-base);white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}
+.tab:first-child{margin-left:-12px}
+.tab:hover{color:var(--ink-2)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+
+/* ---------- seções ---------- */
+main{padding-block:22px 64px}
+.tabpanel{display:grid;gap:20px}
+.sec-head{display:grid;gap:8px;max-width:72ch}
+.sec-head p{color:var(--ink-2)}
+
+/* ---------- controles ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:end}
+.field{display:grid;gap:8px;min-width:0}
+.field-label{font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;display:flex;gap:10px;align-items:baseline}
+.seg{display:inline-flex;padding:3px;gap:2px;border:1px solid var(--line);border-radius:10px;background:var(--panel);max-width:100%;flex-wrap:wrap}
+.seg button{appearance:none;border:0;background:none;padding:7px 12px;border-radius:7px;cursor:pointer;color:var(--ink-2);font-size:var(--fs-sm);font-weight:500;white-space:nowrap;transition:background .15s,color .15s}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-checked="true"]{background:var(--ink);color:var(--bg)}
+
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:var(--fs-sm);font-weight:600;color:var(--ink);white-space:nowrap}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+
+/* ---------- bancada ---------- */
+.stage{background:var(--stage);border:1px solid var(--line);border-radius:var(--r-lg);padding:clamp(10px,1.6vw,18px);display:grid;gap:clamp(10px,1.6vw,18px);grid-template-columns:repeat(var(--cols,3),minmax(0,1fr))}
+.stage[data-count="4"]{--cols:4}
+.stage[data-count="3"]{--cols:3}
+@media (max-width:900px){.stage[data-count="4"]{--cols:2}}
+@media (max-width:760px){.stage[data-count="3"]{--cols:1}}
+.bay{margin:0;display:grid;gap:10px;align-content:start;padding:8px;min-width:0}
+.bay canvas{display:block;width:100%;aspect-ratio:380/288;max-width:100%;border-radius:8px}
+.bay figcaption{display:grid;gap:4px;padding-inline:2px}
+.bay-name{font-weight:600;line-height:1.3}
+.bay-line{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px}
+.bay-status{font-size:var(--fs-sm);color:var(--ink-2)}
+
+/* ---------- por dentro ---------- */
+.size-chips{display:flex;flex-wrap:wrap;gap:6px}
+.size-chips button{appearance:none;border:1px solid var(--line-2);background:none;border-radius:999px;padding:7px 14px;font-size:var(--fs-sm);font-weight:500;color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.size-chips button:hover{border-color:var(--ink-3);color:var(--ink)}
+.size-chips button[aria-checked="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.dentro{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:22px 40px;align-items:start}
+.photon{margin:0;display:grid;gap:10px;min-width:0}
+.photon canvas{display:block;width:100%;aspect-ratio:2/1;max-width:100%;border-radius:var(--r-lg);border:1px solid var(--line);background:var(--stage)}
+.photon figcaption{font-size:var(--fs-sm);color:var(--ink-2);max-width:72ch}
+.dentro-info{display:grid;gap:14px;align-content:start;min-width:0}
+.reg-title{display:flex;align-items:center;gap:10px}
+.reg-title i{width:12px;height:12px;border-radius:50%;background:var(--c,var(--ink-3));flex:none}
+.dentro-info p{color:var(--ink-2)}
+.meters{display:grid;gap:12px;padding-top:4px}
+.meter{display:grid;gap:6px;font-size:var(--fs-sm);color:var(--ink-2)}
+.bar{height:8px;border-radius:4px;background:var(--panel-2);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:4px;background:var(--ink);transition:width .35s}
+.bar i.red{background:var(--laser-red)}
+.size-sec{display:grid;gap:12px;padding-top:14px;border-top:1px solid var(--line);min-width:0}
+.sizefig{margin:0;display:grid;gap:10px;min-width:0}
+.sizefig canvas{display:block;width:100%;aspect-ratio:900/250;max-width:100%;border-radius:var(--r-lg);border:1px solid var(--line);background:var(--stage)}
+.sizefig figcaption{font-size:var(--fs-sm);color:var(--ink-2);max-width:80ch}
+.ruler-title{font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-top:6px}
+#ruler{display:block;width:100%;overflow:visible}
+.sv-lab{fill:var(--ink-3);font:11.5px var(--f-mono)}
+.sv-sans{font-family:var(--f-sans)}
+.sv-zone{fill:var(--ink);font:600 12.5px var(--f-sans)}
+.sv-tick{stroke:var(--ink-3);stroke-width:1}
+.sv-mark{fill:var(--ink)}
+
+footer{border-top:1px solid var(--line);padding-block:20px 32px;color:var(--ink-3);font-size:var(--fs-xs)}
+
+/* ---------- telas menores ---------- */
+@media (max-width:900px){
+  .dentro{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;width:100%}
+  .seg button{white-space:normal;line-height:1.25;text-align:center}
+  .tab{padding-inline:10px}
+  .tab:first-child{margin-left:-10px}
+  .stage{padding:8px;gap:6px}
+  .bay{padding:4px;gap:6px}
+  .bay-name{font-size:var(--fs-sm)}
+  .bay-status,.bay .chip{font-size:var(--fs-xs)}
+  .sizefig canvas{aspect-ratio:900/360}
+  .sv-lab{font-size:12.5px}
+  .fs-btn{padding:7px 9px}
+  .fs-btn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+</head>
+<body>
+<header class="top wrap">
+  <div class="top-text">
+    <p class="eyebrow">Química · Dispersões</p>
+    <h1>Efeito Tyndall</h1>
+    <p class="lead">No efeito Tyndall, o caminho de um feixe de luz fica visível dentro de uma mistura. Isso acontece quando ela tem partículas grandes o bastante para desviar parte da luz para os lados, como as dos coloides.</p>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Seções do simulador">
+  <div class="wrap tabs-in">
+    <div class="tablist" role="tablist">
+      <button type="button" class="tab" role="tab" id="tab-bancada" aria-controls="p-bancada" aria-selected="true">Bancada</button>
+      <button type="button" class="tab" role="tab" id="tab-dentro" aria-controls="p-dentro" aria-selected="false" tabindex="-1">Por dentro</button>
+    </div>
+    <button type="button" class="fs-btn" id="fs-btn" hidden><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span id="fs-label">Tela cheia</span></button>
+  </div>
+</nav>
+
+<main>
+<!-- ================= BANCADA ================= -->
+<section id="p-bancada" class="tabpanel wrap" role="tabpanel" aria-labelledby="tab-bancada">
+  <div class="sec-head">
+    <h2>Bancada</h2>
+    <p>Em cada quadro, um laser vermelho atravessa um copo, que é observado de lado. Compare o caminho da luz dentro de cada copo e o ponto de luz no anteparo, à direita.</p>
+  </div>
+  <div class="toolbar">
+    <div class="field">
+      <span class="field-label" id="lb-montagem">Montagem</span>
+      <div class="seg" role="radiogroup" aria-labelledby="lb-montagem">
+        <button type="button" role="radio" id="m-banner" data-preset="banner" aria-checked="true">Experimento do banner</button>
+        <button type="button" role="radio" id="m-classic" data-preset="classic" aria-checked="false">Solução, coloide e suspensão</button>
+      </div>
+    </div>
+  </div>
+  <div class="stage" id="stage" data-count="4"></div>
+</section>
+
+<!-- ================= POR DENTRO ================= -->
+<section id="p-dentro" class="tabpanel wrap" role="tabpanel" aria-labelledby="tab-dentro" hidden>
+  <div class="sec-head">
+    <h2>Por dentro</h2>
+    <p>O que acontece com a luz dentro do copo depende do tamanho das partículas. Escolha uma mistura.</p>
+  </div>
+  <div class="size-chips" id="ex-pick" role="radiogroup" aria-label="Mistura"></div>
+  <div class="dentro">
+    <figure class="photon">
+      <canvas id="ph-cv" role="img" aria-label="Desenho visto de cima: traços de luz atravessando a mistura"></canvas>
+      <figcaption>Desenho visto de cima. Cada traço vermelho é um pouco da luz do laser. O olho, embaixo, representa quem observa o copo de lado: essa pessoa só enxerga a luz desviada na direção dos olhos dela. A luz que segue reto vai direto para o anteparo. As partículas estão desenhadas bem maiores do que são; o tamanho real aparece mais abaixo.</figcaption>
+    </figure>
+    <aside class="dentro-info" aria-live="polite">
+      <h3 class="reg-title"><i id="reg-dot"></i><span id="reg-title">Coloide</span></h3>
+      <p id="reg-text"></p>
+      <div class="meters">
+        <div class="meter"><span>Luz que segue reto até o anteparo</span><div class="bar"><i id="m-straight"></i></div></div>
+        <div class="meter"><span>Luz desviada pelas partículas</span><div class="bar"><i id="m-scat" class="red"></i></div></div>
+      </div>
+    </aside>
+  </div>
+  <section class="size-sec" aria-labelledby="t-size">
+    <h3 id="t-size">Tamanho da partícula comparado ao comprimento de onda da luz</h3>
+    <figure class="sizefig">
+      <canvas id="size-cv" role="img" aria-label="Partícula e onda de luz desenhadas na mesma escala"></canvas>
+      <figcaption id="size-cap"></figcaption>
+    </figure>
+    <p class="ruler-title" id="ruler-title">Faixas de tamanho das partículas</p>
+    <svg id="ruler" height="80" role="img" aria-labelledby="ruler-title"></svg>
+  </section>
+</section>
+</main>
+
+<footer class="wrap">Simulador do efeito Tyndall · Química · valores aproximados</footer>
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   1. Utilidades
+   ========================================================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('tyndall.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('tyndall.' + k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } },
+};
+function rng(seed) { let s = (seed >>> 0) || 0x9e3779b9; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+const rgba = (c, a = 1) => `rgba(${Math.round(clamp(c[0], 0, 255))},${Math.round(clamp(c[1], 0, 255))},${Math.round(clamp(c[2], 0, 255))},${a})`;
+const mixc = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+const scalec = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+
+function sig(v, n = 2) {
+  if (!isFinite(v)) return '—';
+  if (v === 0) return '0';
+  const p = Math.floor(Math.log10(Math.abs(v)));
+  const dec = Math.max(0, n - 1 - p);
+  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: dec }).format(Number(v.toPrecision(n)));
+}
+function fmtLen(nm) {
+  if (nm < 0.01) return 'menos de 0,01 nm';
+  const r = v => Number(v.toPrecision(2));
+  if (r(nm) < 1000) return sig(nm, 2) + ' nm';
+  if (r(nm / 1000) < 1000) return sig(nm / 1000, 2) + ' µm';
+  return sig(nm / 1e6, 2) + ' mm';
+}
+function fmtTimesDe(x) { const t = fmtTimes(x); return /milh|bilh|trilh/.test(t) ? t + ' de' : t; }
+function fmtTimes(x) {
+  if (x >= 1e12) return sig(x / 1e12, 2) + (x < 2e12 ? ' trilhão' : ' trilhões');
+  if (x >= 1e9) return sig(x / 1e9, 2) + (x < 2e9 ? ' bilhão' : ' bilhões');
+  if (x >= 1e6) return sig(x / 1e6, 2) + (x < 2e6 ? ' milhão' : ' milhões');
+  if (x >= 1e4) return sig(x / 1e3, 2) + ' mil';
+  return sig(x, 2);
+}
+
+/* =========================================================
+   2. Física
+   ========================================================= */
+const PHYS = { nW: 1.333, eta: 1.0e-3, rhoW: 1000, g: 9.81, L: 0.06, H: 0.08, packing: 0.6 };
+const ZS = [-2.25, -1.75, -1.25, -0.75, -0.25, 0.25, 0.75, 1.25, 1.75, 2.25];
+const ZW = (() => { const w = ZS.map(z => Math.exp(-z * z / 2)); const s = w.reduce((a, b) => a + b, 0); return w.map(v => v / s); })();
+
+function qExt(dnm, lam, m) {           // eficiência de espalhamento: Rayleigh + difração anômala
+  const x = Math.PI * dnm * PHYS.nW / lam;
+  const K = (m * m - 1) / (m * m + 2);
+  const qR = (8 / 3) * x * x * x * x * K * K;
+  const rho = 2 * x * Math.abs(m - 1);
+  const qA = rho < 1e-3 ? rho * rho / 2 : 2 - (4 / rho) * Math.sin(rho) + (4 / (rho * rho)) * (1 - Math.cos(rho));
+  if (!(qR > 0) || !(qA > 0)) return 0;
+  return Math.pow(Math.pow(qR, -1.5) + Math.pow(qA, -1.5), -1 / 1.5);
+}
+const sizeParam = (dnm, lam) => Math.PI * dnm * PHYS.nW / lam;
+const gAsym = x => Math.min(0.93, 1 - 1 / (1 + 0.25 * x * x));
+const p90 = g => (1 - g * g) / Math.pow(1 + g * g, 1.5);
+function vSettle(dnm, rhoP) {          // Ferguson & Church: vira Stokes para grãos pequenos
+  const D = dnm * 1e-9, R = (rhoP - PHYS.rhoW) / PHYS.rhoW, nu = PHYS.eta / PHYS.rhoW;
+  return R * PHYS.g * D * D / (18 * nu + Math.sqrt(0.75 * Math.abs(R) * PHYS.g * D * D * D));
+}
+function binsOf(pop) {
+  if (pop._bins) return pop._bins;
+  const b = ZS.map((z, i) => {
+    const f = Math.pow(pop.sg, z);
+    return { d: pop.d * f, dh: (pop.dh || pop.d) * f, phi: pop.phi * ZW[i], m: pop.m, rho: pop.rho, v: vSettle(pop.d * f, pop.rho) };
+  });
+  pop._bins = b;
+  return b;
+}
+function presentFrac(v, t, y) {
+  if (t <= 0 || v === 0) return 1;
+  const w = 0.004;
+  if (v > 0) { const front = PHYS.H - v * t; return clamp((front - y) / w + 0.5, 0, 1); }
+  return clamp((y + v * t) / w + 0.5, 0, 1);
+}
+function opticsAt(sample, lam, t, y, conc) {
+  let tau = 0, S = 0, tg = 0, td = 0;
+  for (const pop of sample.pops) {
+    for (const b of binsOf(pop)) {
+      let phi = b.phi * conc;
+      if (pop.pass) phi *= pop.pass(b.dh);
+      if (phi <= 0) continue;
+      const f = presentFrac(b.v, t, y);
+      if (f <= 0) continue;
+      const x = sizeParam(b.d, lam), q = qExt(b.d, lam, b.m), g = gAsym(x);
+      const ts = 1.5 * phi * f * q / (b.d * 1e-9);
+      tau += ts; S += ts * p90(g); tg += ts * g; td += ts * b.d;
+    }
+  }
+  const wat = 0.0019 * Math.pow(532 / lam, 4.32);
+  const tauP = tau;
+  tau += wat; S += wat * 0.75;
+  const alpha = sample.alpha ? sample.alpha(lam) * (sample.alphaConc ? conc : 1) : 0;
+  return { tau, tauP, S, g: tau > 0 ? tg / tau : 0, dEff: tauP > 0 ? td / tauP : 0, alpha };
+}
+function sediment(sample, t, conc) {
+  let bottom = 0, top = 0;
+  if (t <= 0) return { bottom, top };
+  for (const pop of sample.pops) for (const b of binsOf(pop)) {
+    const phi = b.phi * conc * (pop.pass ? pop.pass(b.dh) : 1);
+    if (b.v > 0) bottom += phi * Math.min(b.v * t, PHYS.H) / PHYS.packing;
+    else if (b.v < 0) top += phi * Math.min(-b.v * t, PHYS.H) / PHYS.packing;
+  }
+  return { bottom, top };
+}
+function bigInfo(sample, t, y, conc) {     // grãos grandes (> 8 µm) dentro do volume do feixe
+  let n = 0, vs = 0, ds = 0;
+  for (const pop of sample.pops) for (const b of binsOf(pop)) {
+    if (b.d < 8000) continue;
+    const phi = b.phi * conc * (pop.pass ? pop.pass(b.dh) : 1);
+    const nb = phi * presentFrac(b.v, t, y) / (Math.PI / 6 * Math.pow(b.d * 1e-9, 3));
+    n += nb; vs += nb * b.v; ds += nb * b.d;
+  }
+  const Vb = Math.PI * 0.0015 * 0.0015 * PHYS.L;
+  return { count: n * Vb, v: n ? vs / n : 0, d: n ? ds / n : 0 };
+}
+const beamLevel = G => clamp((Math.log10(Math.max(G, 1e-12)) + 1.7) / 3.3, 0, 1);
+const spotLevel = T => Math.sqrt(clamp(T, 0, 1));
+
+/* =========================================================
+   3. Luzes e amostras
+   ========================================================= */
+const LIGHTS = {
+  red: { name: 'Laser vermelho', lam: 650, ch: [{ lam: 650, rgb: [255, 52, 40] }] },
+};
+const WHITE3 = [610, 545, 465];
+const TYPES = {
+  sol: { name: 'Solução', color: 'var(--sol)' },
+  col: { name: 'Coloide', color: 'var(--col)' },
+  sus: { name: 'Suspensão', color: 'var(--sus)' },
+};
+const MILK = [
+  { d: 450, sg: 1.6, phi: 0.036, m: 1.46 / 1.333, rho: 920 },   // gotículas de gordura
+  { d: 150, sg: 1.5, phi: 0.10, m: 1.39 / 1.333, rho: 1060 },   // grupos de proteína (caseína)
+];
+const milkPops = f => MILK.map(p => Object.assign({}, p, { phi: p.phi * f }));
+const SAMPLES = {
+  acucar: {
+    name: 'Água com açúcar', type: 'sol',
+    pops: [{ d: 0.9, sg: 1.05, phi: 0.05, m: 1.177, rho: 1590 }],
+    tint: [0.93, 0.95, 0.97], sed: [230, 230, 230],
+  },
+  leite: {
+    name: 'Leite integral diluído em água', short: 'Leite integral diluído', type: 'col',
+    pops: milkPops(1 / 1000),
+    tint: [0.97, 0.97, 0.95], sed: [245, 242, 230],
+  },
+  gelatina: {
+    name: 'Gelatina dissolvida em água', short: 'Gelatina dissolvida', type: 'col',
+    pops: [{ d: 6, dh: 25, sg: 1.5, phi: 0.0148, m: 1.20, rho: 1350 }],
+    tint: [0.96, 0.95, 0.9], sed: [230, 220, 190],
+  },
+  goma: {
+    name: 'Amido disperso em água (goma)', short: 'Amido disperso (goma)', type: 'col',
+    pops: [{ d: 200, sg: 1.8, phi: 0.002, m: 1.02, rho: 1100 }],
+    tint: [0.96, 0.96, 0.95], sed: [240, 240, 236],
+  },
+  amidocru: {
+    name: 'Amido cru em água fria', type: 'sus',
+    pops: [{ d: 13000, sg: 1.45, phi: 0.02, m: 1.53 / 1.333, rho: 1500 }],
+    tint: [0.97, 0.97, 0.95], sed: [242, 240, 232], fine: true,
+  },
+};
+const PRESETS = { banner: ['acucar', 'leite', 'gelatina', 'goma'], classic: ['acucar', 'leite', 'amidocru'] };
+const sname = id => SAMPLES[id].short || SAMPLES[id].name;
+
+/* =========================================================
+   4. Perfil óptico de um copo
+   ========================================================= */
+function makeProfile(sample, lightId, t, conc, hbCm) {
+  const L = LIGHTS[lightId];
+  const hb = hbCm / 100;
+  const beam = L.ch.map(c => opticsAt(sample, c.lam, t, hb, conc));
+  const NY = 16, rows = [];
+  for (let k = 0; k < NY; k++) {
+    const y = (k + 0.5) / NY * PHYS.H;
+    rows.push(WHITE3.map(lam => opticsAt(sample, lam, t, y, conc)));
+  }
+  return { beam, rows, sed: sediment(sample, t, conc), big: bigInfo(sample, t, hb, conc), light: L, hb, sample, t };
+}
+function beamSummary(prof) {
+  const ch = prof.beam;
+  const Gmax = Math.max(...ch.map(o => o.S));
+  const B0 = beamLevel(Gmax);
+  const T = ch.map(o => Math.exp(-(o.tau + o.alpha) * PHYS.L));
+  const Tavg = T.reduce((a, b) => a + b, 0) / T.length;
+  const opaque = Math.min(...ch.map(o => o.tau * PHYS.L)) > 5;
+  const absorbs = Math.max(...ch.map(o => o.alpha * PHYS.L)) > 0.2;
+  return { B0, T, Tavg, opaque, absorbs, Gmax };
+}
+
+/* =========================================================
+   5. Desenho
+   ========================================================= */
+// perfil vertical do feixe visto de lado (núcleo estreito e halo suave), normalizado para 1 no centro
+function beamProfile(dy, w0, half) {
+  const win = Math.pow(Math.max(0, 1 - (dy / half) ** 2), 2);
+  return win * (Math.exp(-((dy / w0) ** 2)) + 0.42 * Math.exp(-((dy / (2.6 * w0)) ** 2)) + 0.16 * Math.exp(-((dy / (6.5 * w0)) ** 2))) / 1.58;
+}
+
+function rr(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+const ROOM_DARK = { top: [7, 9, 13], bot: [10, 13, 18], table: [15, 18, 24], tableEdge: [34, 40, 50] };
+const ROOM_LIT = { top: [74, 80, 90], bot: [96, 102, 112], table: [128, 132, 138], tableEdge: [170, 174, 180] };
+function roomColors(room) {
+  return { top: mixc(ROOM_DARK.top, ROOM_LIT.top, room), bot: mixc(ROOM_DARK.bot, ROOM_LIT.bot, room), table: mixc(ROOM_DARK.table, ROOM_LIT.table, room), tableEdge: mixc(ROOM_DARK.tableEdge, ROOM_LIT.tableEdge, room) };
+}
+function drawRoom(ctx, mw, mh, tableY, room) {
+  const c = roomColors(room);
+  const g = ctx.createLinearGradient(0, 0, 0, tableY);
+  g.addColorStop(0, rgba(c.top)); g.addColorStop(1, rgba(c.bot));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, mw, tableY);
+  ctx.fillStyle = rgba(c.table); ctx.fillRect(0, tableY, mw, mh - tableY);
+  ctx.fillStyle = rgba(c.tableEdge); ctx.fillRect(0, tableY, mw, 1.2);
+}
+function beamColorAt(prof, xm, room) {
+  const o = prof.beam[0];
+  const fade = Math.pow(Math.exp(-(o.tau + o.alpha) * xm), 0.6);
+  const b = Math.pow(beamLevel(o.S), 1.8) * fade * (1 - 0.72 * room);
+  if (b <= 0) return [0, 0, 0];
+  return scalec(prof.light.ch[0].rgb, b);
+}
+function drawLaser(ctx, x0, x1, yb, tableY, room, light, t, on = true) {
+  const white = !!light.white;
+  const h = white ? 18 : 14;
+  // apoio
+  const blockTop = yb + h / 2 + 1;
+  ctx.fillStyle = rgba(mixc([24, 28, 36], [92, 84, 74], room));
+  rr(ctx, x0 + 6, blockTop, x1 - x0 - 22, tableY - blockTop, 2); ctx.fill();
+  ctx.fillStyle = rgba(mixc([40, 46, 58], [130, 120, 106], room), 0.9);
+  ctx.fillRect(x0 + 6, blockTop, x1 - x0 - 22, 1.2);
+  // corpo
+  const g = ctx.createLinearGradient(0, yb - h / 2, 0, yb + h / 2);
+  const base = mixc([46, 52, 62], [70, 76, 86], room);
+  g.addColorStop(0, rgba(mixc(base, [255, 255, 255], 0.18)));
+  g.addColorStop(0.45, rgba(base));
+  g.addColorStop(1, rgba(scalec(base, 0.55)));
+  ctx.fillStyle = g;
+  if (white) {
+    rr(ctx, x0, yb - 6, x1 - x0 - 16, 12, 4); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x1 - 18, yb - 6); ctx.lineTo(x1 - 4, yb - h / 2 - 2); ctx.lineTo(x1 - 4, yb + h / 2 + 2); ctx.lineTo(x1 - 18, yb + 6); ctx.closePath(); ctx.fill();
+  } else {
+    rr(ctx, x0, yb - h / 2, x1 - x0 - 10, h, 4); ctx.fill();
+    ctx.fillStyle = rgba(scalec(base, 0.8)); ctx.fillRect(x1 - 12, yb - 4.5, 8, 9);
+    ctx.fillStyle = rgba(mixc(base, [255, 255, 255], 0.3)); ctx.fillRect(x0 + 22, yb - h / 2 - 2, 9, 2.2);
+  }
+  if (!on) return;
+  // abertura acesa
+  const col = white ? [255, 248, 232] : light.ch[0].rgb;
+  const ax = x1 - 3;
+  const rg = ctx.createRadialGradient(ax, yb, 0, ax, yb, white ? 16 : 11);
+  rg.addColorStop(0, rgba(col, 0.95)); rg.addColorStop(0.25, rgba(col, 0.45)); rg.addColorStop(1, rgba(col, 0));
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(ax, yb, white ? 16 : 11, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* copo: geo = {x0,x1,rim,bottom,wall,baseT,cm,fillCm} */
+function drawCup(ctx, geo, prof, opt) {
+  const room = opt.room, time = opt.time || 0, s = prof.sample;
+  const xi0 = geo.x0 + geo.wall, xi1 = geo.x1 - geo.wall;
+  const yBot = geo.bottom - geo.baseT;
+  const yTop = yBot - geo.fillCm * geo.cm;
+  const yb = yBot - prof.hb * 100 * geo.cm;
+  const Lu = xi1 - xi0;
+  const amb = lerp(0.035, 1, room);
+  const rc = roomColors(room);
+  const bgBehind = scalec(mixc(rc.top, rc.bot, 0.6), 1 / 255);
+
+  // borda de trás
+  ctx.strokeStyle = `rgba(255,255,255,${lerp(0.05, 0.16, room)})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse((geo.x0 + geo.x1) / 2, geo.rim, (geo.x1 - geo.x0) / 2, 3.5, 0, Math.PI, Math.PI * 2); ctx.stroke();
+
+  if (geo.fillCm > 0.05) {
+    // líquido: cor vista com a luz ambiente, linha a linha
+    const NY = prof.rows.length;
+    const lg = ctx.createLinearGradient(0, yTop, 0, yBot);
+    const fillH = geo.fillCm / 8;
+    for (let k = NY - 1; k >= 0; k--) {
+      const row = prof.rows[k];
+      const yy = (k + 0.5) / NY;                // fração da altura de 8 cm, a partir do fundo
+      if (yy > fillH + 0.02) continue;
+      const c = [0, 0, 0];
+      for (let i = 0; i < 3; i++) {
+        const o = row[i];
+        const W = 1 - Math.exp(-0.5 * o.tauP * (1 - o.g) * PHYS.L);
+        const A = Math.exp(-o.alpha * PHYS.L);
+        const alb = s.tint ? s.tint[i] : 0.93;
+        c[i] = (amb * W * alb * 0.95 + (1 - W) * bgBehind[i] * A) * 255;
+      }
+      const off = clamp(1 - yy / fillH, 0, 1);
+      lg.addColorStop(off, rgba(c));
+    }
+    ctx.fillStyle = lg;
+    ctx.fillRect(xi0, yTop, Lu, yBot - yTop);
+
+    // sedimento e camada de creme
+    const sedU = Math.min(prof.sed.bottom * 100 * geo.cm, (yBot - yTop) * 0.9);
+    if (sedU > 0.15) {
+      const h = Math.max(1.4, sedU);
+      const sc = scalec(s.sed || [220, 220, 220], lerp(0.13, 1, room));
+      ctx.fillStyle = rgba(sc);
+      ctx.fillRect(xi0, yBot - h, Lu, h);
+      const r = rng(77);
+      ctx.fillStyle = rgba(scalec(sc, 0.82));
+      for (let i = 0; i < Math.min(160, h * 22); i++) ctx.fillRect(xi0 + r() * Lu, yBot - h + r() * h, 1.1, 1.1);
+      ctx.fillStyle = rgba(scalec(sc, 1.08), 0.8); ctx.fillRect(xi0, yBot - h, Lu, 0.8);
+    }
+    const creamU = Math.min(prof.sed.top * 100 * geo.cm, (yBot - yTop) * 0.5);
+    if (creamU > 0.4) { ctx.fillStyle = rgba(scalec([250, 246, 232], lerp(0.13, 1, room))); ctx.fillRect(xi0, yTop, Lu, Math.max(1, creamU)); }
+
+    // feixe (luz espalhada para os lados)
+    if (yb > yTop + 2 && opt.beam !== false) {
+      const L = prof.light, white = !!L.white;
+      const w0 = white ? 3.4 : 1.55, half = 2.1 * 6.5 * w0, NXs = 32, K = 28;
+      // cor e brilho ao longo do caminho da luz (cada copo calcula o seu)
+      const grad = ctx.createLinearGradient(xi0, 0, xi1, 0);
+      let peak = 0;
+      for (let i = 0; i <= NXs; i++) {
+        const f = i / NXs, c = beamColorAt(prof, f * PHYS.L, room);
+        peak = Math.max(peak, c[0], c[1], c[2]);
+        grad.addColorStop(f, `rgb(${Math.round(clamp(c[0], 0, 255))},${Math.round(clamp(c[1], 0, 255))},${Math.round(clamp(c[2], 0, 255))})`);
+      }
+      ctx.save();
+      ctx.beginPath(); ctx.rect(xi0, yTop, Lu, yBot - yTop); ctx.clip();
+      ctx.globalCompositeOperation = 'lighter';
+      // abaixo do limite de "feixe invisível" (nível 0,06) não há o que desenhar
+      if (peak >= 6) {
+        // retângulos encaixados: a soma das camadas reproduz o perfil vertical do feixe
+        const r = [];
+        for (let j = 0; j <= K; j++) r.push(half * Math.pow(j / K, 1.8));
+        const pv = [];
+        for (let j = 1; j <= K; j++) pv.push(beamProfile((r[j - 1] + r[j]) / 2, w0, half));
+        ctx.fillStyle = grad;
+        for (let j = 1; j <= K; j++) {
+          const a = pv[j - 1] - (j < K ? pv[j] : 0);
+          if (a <= 0.002) continue;
+          ctx.globalAlpha = Math.min(1, a);
+          ctx.fillRect(xi0, yb - r[j], Lu, 2 * r[j]);
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // brilho difuso por espalhamento múltiplo
+      let tauTr = 0, gIdx = 0;
+      prof.beam.forEach((o, i) => { const v = o.tauP * (1 - o.g); if (v > tauTr) { tauTr = v; gIdx = i; } });
+      const Ad = 1 - Math.exp(-tauTr * PHYS.L / 1.5);
+      if (Ad > 0.03) {
+        const c0 = beamColorAt(prof, 0, room);
+        const mx = Math.max(c0[0], c0[1], c0[2]);
+        const col = mx > 0 ? scalec(c0, 255 / mx) : [255, 255, 255];
+        const ltr = tauTr > 0 ? 1 / tauTr : 1;
+        const cx = xi0 + Math.min(ltr * 100 * geo.cm, 0.35 * Lu);
+        const R = Lu * clamp(0.28 + 0.32 * Math.log10(1 + tauTr * PHYS.L), 0.28, 1.15);
+        const a = Ad * 0.55 * (1 - 0.6 * room);
+        const rg = ctx.createRadialGradient(cx, yb, 0, cx, yb, R);
+        rg.addColorStop(0, rgba(col, a)); rg.addColorStop(0.35, rgba(col, a * 0.45)); rg.addColorStop(1, rgba(col, 0));
+        ctx.fillStyle = rg; ctx.fillRect(xi0, yTop, Lu, yBot - yTop);
+      }
+
+      // grãos grandes brilhando no feixe
+      const big = prof.big;
+      const nSp = big.count > 0.5 ? clamp(Math.round(4.2 * Math.log10(1 + big.count)), 0, 30) : 0;
+      if (nSp > 0) {
+        const r = rng(4242 + (opt.seed || 0));
+        const fall = clamp(big.v * 100 * geo.cm, 0, 46);
+        for (let i = 0; i < nSp; i++) {
+          const fx = r(), ph = r() * 6.28, sp = 1.2 + r() * 2.4, y0 = r();
+          const xm = fx * PHYS.L;
+          const c = beamColorAt(prof, xm, 0);
+          const lvl = Math.max(c[0], c[1], c[2]) / 255;
+          if (lvl < 0.05) continue;
+          const tw = REDUCED ? 0.8 : 0.45 + 0.55 * Math.max(0, Math.sin(time * sp + ph));
+          const band = 12;
+          const yy = yb - band / 2 + ((y0 * band + time * fall) % band);
+          const sz = clamp(0.9 + Math.log10(big.d / 8000 + 1) * 2.2, 0.9, 3);
+          const col = prof.light.white ? [255, 250, 240] : prof.light.ch[0].rgb;
+          ctx.fillStyle = rgba(col, clamp(tw * lvl * 1.4, 0, 1) * (1 - 0.5 * room));
+          ctx.beginPath(); ctx.arc(xi0 + fx * Lu, yy, sz, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      // cintilação fina dos grãos de amido no brilho
+      if (s.fine) {
+        const r = rng(99 + (opt.seed || 0));
+        const sum = beamSummary(prof);
+        if (sum.B0 > 0.3) {
+          const c0 = beamColorAt(prof, 0, 0);
+          for (let i = 0; i < 40; i++) {
+            const ang = r() * 6.28, rad = Math.pow(r(), 0.7) * Lu * 0.4;
+            const tw = REDUCED ? 0.5 : Math.max(0, Math.sin(time * (2 + r() * 4) + r() * 6.28));
+            ctx.fillStyle = rgba(c0, 0.35 * tw * (1 - 0.6 * room));
+            ctx.fillRect(xi0 + 6 + Math.abs(Math.cos(ang)) * rad, yb + Math.sin(ang) * rad * 0.7, 1.1, 1.1);
+          }
+        }
+      }
+      ctx.restore();
+    }
+    // menisco
+    ctx.fillStyle = `rgba(255,255,255,${lerp(0.03, 0.12, room)})`;
+    ctx.beginPath(); ctx.ellipse((xi0 + xi1) / 2, yTop, Lu / 2, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // vidro (frente)
+  const ga = lerp(0.2, 0.36, room);
+  ctx.fillStyle = `rgba(210,225,240,${lerp(0.03, 0.08, room)})`;
+  ctx.fillRect(geo.x0, geo.rim, geo.wall, geo.bottom - geo.rim);
+  ctx.fillRect(xi1, geo.rim, geo.wall, geo.bottom - geo.rim);
+  ctx.fillStyle = `rgba(210,225,240,${lerp(0.05, 0.13, room)})`;
+  rr(ctx, geo.x0, yBot, geo.x1 - geo.x0, geo.baseT, 3); ctx.fill();
+  ctx.strokeStyle = `rgba(230,240,255,${ga})`; ctx.lineWidth = 1.1;
+  const r = 6;
+  ctx.beginPath();
+  ctx.moveTo(geo.x0, geo.rim); ctx.lineTo(geo.x0, geo.bottom - r); ctx.quadraticCurveTo(geo.x0, geo.bottom, geo.x0 + r, geo.bottom);
+  ctx.lineTo(geo.x1 - r, geo.bottom); ctx.quadraticCurveTo(geo.x1, geo.bottom, geo.x1, geo.bottom - r); ctx.lineTo(geo.x1, geo.rim);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(230,240,255,${ga * 0.45})`;
+  ctx.beginPath(); ctx.moveTo(xi0, geo.rim + 3); ctx.lineTo(xi0, yBot); ctx.lineTo(xi1, yBot); ctx.lineTo(xi1, geo.rim + 3); ctx.stroke();
+  ctx.strokeStyle = `rgba(230,240,255,${ga})`;
+  ctx.beginPath(); ctx.ellipse((geo.x0 + geo.x1) / 2, geo.rim, (geo.x1 - geo.x0) / 2, 3.5, 0, 0, Math.PI); ctx.stroke();
+  const hl = ctx.createLinearGradient(geo.x0 + 9, 0, geo.x0 + 19, 0);
+  hl.addColorStop(0, 'rgba(255,255,255,0)'); hl.addColorStop(0.5, `rgba(255,255,255,${lerp(0.035, 0.12, room)})`); hl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hl; ctx.fillRect(geo.x0 + 9, geo.rim + 8, 10, yBot - geo.rim - 16);
+
+  // pontos onde o feixe toca o vidro
+  if (opt.beam !== false && yb > yTop + 2 && geo.fillCm > 0.05) {
+    const sum = beamSummary(prof);
+    const col = prof.light.white ? [255, 248, 236] : prof.light.ch[0].rgb;
+    ctx.globalCompositeOperation = 'lighter';
+    const glint = (x, k) => { const g = ctx.createRadialGradient(x, yb, 0, x, yb, 6); g.addColorStop(0, rgba(col, 0.75 * k)); g.addColorStop(1, rgba(col, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, yb, 6, 0, Math.PI * 2); ctx.fill(); };
+    glint(geo.x0 + 1.5, 0.75 * (1 - 0.6 * room));
+    glint(geo.x1 - 1.5, 0.75 * spotLevel(Math.max(...sum.T)) * (1 - 0.6 * room));
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  return { yb, yTop, yBot, xi0, xi1 };
+}
+
+function drawScreen(ctx, sc, yb, prof, room) {
+  const { xn, xf, yTopN, yTopF, yBotN, yBotF } = sc;
+  const surf = mixc([18, 21, 27], [206, 209, 214], room);
+  ctx.fillStyle = rgba(surf);
+  ctx.beginPath(); ctx.moveTo(xn, yTopN); ctx.lineTo(xf, yTopF); ctx.lineTo(xf, yBotF); ctx.lineTo(xn, yBotN); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = `rgba(255,255,255,${lerp(0.08, 0.25, room)})`; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = rgba(mixc([28, 32, 40], [120, 124, 130], room));
+  ctx.fillRect(xn - 4, yBotN - 3, xf - xn + 8, 3);
+  if (!prof) return;
+  const sum = beamSummary(prof);
+  const L = prof.light;
+  const cx = lerp(xn, xf, 0.42);
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(xn, yTopN); ctx.lineTo(xf, yTopF); ctx.lineTo(xf, yBotF); ctx.lineTo(xn, yBotN); ctx.closePath(); ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  // halo de luz espalhada para a frente
+  let fwd = 0, dEff = 0, Tm = 0;
+  prof.beam.forEach(o => { const f = (1 - Math.exp(-o.tauP * PHYS.L)) * o.g * o.g * Math.exp(-o.alpha * PHYS.L); if (f > fwd) { fwd = f; dEff = o.dEff; } });
+  Tm = Math.max(...sum.T);
+  const tint = c => { if (!L.white) return L.ch[0].rgb; return c; };
+  if (fwd > 0.01 && dEff > 0) {
+    const theta = 0.5 * (L.lam / 1000) / (dEff / 1000);
+    const Rh = sum.opaque ? 35 : clamp(750 * theta, 4, 70) * 0.5;
+    const hcol = tint([255, 236, 210]);
+    const a = clamp(0.25 + Math.log10(fwd) / 3, 0, 0.6) * (sum.opaque ? 0.45 : 1);
+    const g = ctx.createRadialGradient(cx, yb, 0, cx, yb, Rh);
+    g.addColorStop(0, rgba(hcol, a)); g.addColorStop(1, rgba(hcol, 0));
+    ctx.fillStyle = g; ctx.save(); ctx.translate(cx, yb); ctx.scale(0.55, 1); ctx.translate(-cx, -yb); ctx.beginPath(); ctx.arc(cx, yb, Rh, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  // ponto principal
+  const lvl = spotLevel(Tm);
+  if (lvl > 0) {
+    let col;
+    if (!L.white) col = L.ch[0].rgb;
+    else { col = [0, 0, 0]; L.ch.forEach((cc, i) => { const k = sum.T[i] / Tm; col[0] += cc.rgb[0] * k; col[1] += cc.rgb[1] * k; col[2] += cc.rgb[2] * k; }); const mx = Math.max(...col) || 1; col = scalec(col, 255 / mx); }
+    const R = (L.white ? 9 : 6) * (0.55 + 0.45 * lvl);
+    const g = ctx.createRadialGradient(cx, yb, 0, cx, yb, R * 2.2);
+    g.addColorStop(0, rgba(mixc(col, [255, 255, 255], 0.55 * lvl), lvl)); g.addColorStop(0.3, rgba(col, 0.8 * lvl)); g.addColorStop(1, rgba(col, 0));
+    ctx.fillStyle = g; ctx.save(); ctx.translate(cx, yb); ctx.scale(0.55, 1); ctx.translate(-cx, -yb); ctx.beginPath(); ctx.arc(cx, yb, R * 2.2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  ctx.restore();
+}
+
+/* cena completa de um copo na bancada (modelo 400 × 300) */
+const BAY = {
+  mw: 400, mh: 300, table: 270,
+  cup: { x0: 112, x1: 272, rim: 22, bottom: 270, wall: 5, baseT: 9, cm: 25, fillCm: 8 },
+  laser: [8, 92],
+  screen: { xn: 318, xf: 362, yTopN: 96, yTopF: 110, yBotN: 270, yBotF: 260 },
+};
+function drawBayScene(ctx, W, H, prof, opt) {
+  const crop = opt.crop || [2, 382];
+  const cropY = opt.cropY != null ? opt.cropY : 8;
+  const k = W / (crop[1] - crop[0]);
+  ctx.setTransform(k, 0, 0, k, -crop[0] * k, -cropY * k);
+  drawRoom(ctx, BAY.mw, BAY.mh, BAY.table, opt.room);
+  const yb = BAY.cup.bottom - BAY.cup.baseT - prof.hb * 100 * BAY.cup.cm;
+  if (opt.screen !== false) drawScreen(ctx, BAY.screen, yb, prof, opt.room);
+  drawLaser(ctx, BAY.laser[0], BAY.laser[1], yb, BAY.table, opt.room, prof.light, opt.time);
+  drawCup(ctx, BAY.cup, prof, opt);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+/* canvas com tamanho em pixels reais */
+const canvases = new Map();
+function fitCanvas(cv) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(1, Math.round(cv.clientWidth * dpr)), h = Math.max(1, Math.round(cv.clientHeight * dpr));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; return true; }
+  return false;
+}
+const ro = new ResizeObserver(entries => {
+  for (const e of entries) { if (e.target.tagName === 'CANVAS') { fitCanvas(e.target); markDirty(); } }
+  layoutCharts();
+});
+function registerCanvas(cv) { if (!canvases.has(cv)) { canvases.set(cv, true); ro.observe(cv); fitCanvas(cv); } return cv.getContext('2d'); }
+
+/* =========================================================
+   6. Estado global
+   ========================================================= */
+const S = {
+  tab: 'bancada',
+  light: 'red',
+  dirty: true,
+};
+function markDirty() { S.dirty = true; }
+
+/* =========================================================
+   7. Bancada
+   ========================================================= */
+const BC = {
+  preset: 'banner', ids: PRESETS.banner.slice(),
+  bays: [], profs: [], profKey: '',
+};
+const stage = $('#stage');
+function buildBays() {
+  for (const b of BC.bays) { ro.unobserve(b.cv); canvases.delete(b.cv); }
+  stage.innerHTML = '';
+  stage.dataset.count = String(BC.ids.length);
+  BC.bays = BC.ids.map(id => {
+    const smp = SAMPLES[id];
+    const fig = document.createElement('figure'); fig.className = 'bay';
+    const cv = document.createElement('canvas'); cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', smp.name);
+    const cap = document.createElement('figcaption');
+    const name = document.createElement('span'); name.className = 'bay-name'; name.textContent = sname(id);
+    const line = document.createElement('span'); line.className = 'bay-line';
+    const chip = document.createElement('span'); chip.className = 'chip'; chip.innerHTML = '<i></i><span></span>';
+    chip.querySelector('i').style.setProperty('--c', TYPES[smp.type].color);
+    chip.querySelector('span').textContent = TYPES[smp.type].name;
+    const st = document.createElement('span'); st.className = 'bay-status';
+    line.append(chip, st);
+    cap.append(name, line);
+    fig.append(cv, cap);
+    stage.appendChild(fig);
+    return { cv, ctx: registerCanvas(cv), st };
+  });
+  markDirty();
+}
+function setPreset(p) {
+  BC.preset = p; BC.ids = PRESETS[p].slice();
+  $$('[data-preset]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.preset === p)));
+  buildBays();
+}
+function bayStatus(sum) {
+  if (sum.opaque) return 'Luz desviada na entrada';
+  if (sum.B0 < 0.06) return 'Feixe invisível';
+  if (sum.B0 < 0.5) return 'Feixe fraco';
+  return 'Feixe visível';
+}
+function drawBancada(time) {
+  const key = BC.ids.join();
+  if (key !== BC.profKey) { BC.profKey = key; BC.profs = BC.ids.map(id => makeProfile(SAMPLES[id], S.light, 0, 1, 3.5)); }
+  BC.bays.forEach((b, i) => {
+    if (!b.cv.width) return;
+    const prof = BC.profs[i];
+    drawBayScene(b.ctx, b.cv.width, b.cv.height, prof, { room: 0, time, seed: i * 17 });
+    const status = bayStatus(beamSummary(prof));
+    if (b.st.textContent !== status) { b.st.textContent = status; b.cv.setAttribute('aria-label', `${SAMPLES[BC.ids[i]].name}: ${status}`); }
+  });
+}
+
+/* =========================================================
+   8. Por dentro
+   ========================================================= */
+const LIGHT = LIGHTS.red;
+const EXAMPLES = [
+  { id: 'acucar', label: 'Açúcar', d: 0.9, part: 'A molécula de açúcar', parts: 'molécula' },
+  { id: 'gelatina', label: 'Gelatina', d: 25, part: 'A molécula de gelatina', parts: 'molécula' },
+  { id: 'goma', label: 'Goma de amido', d: 200, part: 'A molécula de amido da goma', parts: 'molécula' },
+  { id: 'leite', label: 'Leite', d: 300, part: 'A partícula do leite', parts: 'partícula' },
+  { id: 'amidocru', label: 'Amido cru', d: 13000, part: 'O grão de amido cru', parts: 'grão' },
+];
+const EX_TEXT = {
+  acucar: 'Quase toda a luz passa pelas moléculas de açúcar sem mudar de direção e segue reto até o anteparo. Só uma parte minúscula vai para os lados, pouca demais para ser vista. Por isso quem observa o copo de lado não vê o caminho do feixe.',
+  gelatina: 'Uma pequena parte da luz é desviada pelas moléculas de gelatina. Um pouco dessa luz chega aos olhos de quem observa de lado, e o caminho do feixe aparece, mas fraco. Quase toda a luz ainda chega ao anteparo.',
+  goma: 'Boa parte da luz é desviada pelas moléculas de amido dispersas na água. A luz que sai para os lados chega aos olhos de quem observa de lado, e o caminho do feixe fica bem visível. Essa luz não some, só muda de direção. Por isso chega menos luz ao anteparo.',
+  leite: 'Boa parte da luz é desviada pelas partículas do leite (gotículas de gordura e grupos de proteína). A luz que sai para os lados chega aos olhos de quem observa de lado, e o caminho do feixe fica bem visível. Essa luz não some, só muda de direção. Por isso chega menos luz ao anteparo.',
+  amidocru: 'A luz bate nos grãos logo na entrada e é desviada muitas vezes, para todos os lados. Por isso a mistura brilha em vermelho perto da entrada, e quase nada chega ao anteparo. Os grãos são grandes e mais densos que a água: em repouso, vão para o fundo.',
+};
+const DT = { ex: 'leite' };
+
+/* ---------- caminho da luz: pontos de luz desviados pelas partículas ---------- */
+const PH = {
+  cv: $('#ph-cv'), ctx: null, W: 800, H: 400,
+  tank: { x0: 150, x1: 590, y0: 64, y1: 322 },
+  scr: { x: 688, y0: 110, y1: 290 },
+  lx: 104, ly: 193,
+  eye: { x: 370, y: 362 },
+  photons: [], flashes: [], parts: [], paths: null,
+  tauPx: 0, alphaPx: 0, g: 0, T: 1, emit: 0,
+  stat: { direct: 1, side: 0, scat: 0 }, cnt: { direct: 0, side: 0, scat: 0 },
+};
+const PH_SPEED = 300;              // pontos de luz andam devagar para dar para ver
+const PH_RATE = 70;                // pontos de luz por segundo
+const PH_MAXSCAT = 60;             // depois disso a luz se perdeu dentro da mistura
+const PH_OUTMAX = 150;             // no desenho, a luz desviada some depois de sair do copo
+const PX_M = PHYS.L / (PH.tank.x1 - PH.tank.x0);   // a largura desenhada do copo vale 6 cm
+function makeParts(id) {
+  const r = rng(id.length * 7919 + 17), t = PH.tank, out = [];
+  const cfg = {
+    acucar: { n: 320, r: 0.9, a: 0.3, grain: false },
+    gelatina: { n: 180, r: 1.5, a: 0.42, grain: false },
+    goma: { n: 120, r: 2.3, a: 0.6, grain: false },
+    leite: { n: 130, r: 2.6, a: 0.7, grain: false },
+    amidocru: { n: 90, r: 7.5, a: 0.9, grain: true },
+  }[id];
+  for (let i = 0; i < cfg.n; i++) {
+    const rad = cfg.r * (0.75 + 0.5 * r());
+    out.push({ x: t.x0 + rad + 2 + r() * (t.x1 - t.x0 - 2 * rad - 4), y: t.y0 + rad + 2 + r() * (t.y1 - t.y0 - 2 * rad - 4), r: rad, a: cfg.a, grain: cfg.grain, rot: r() * 6.28, ph: r() * 6.28, shape: Array.from({ length: 9 }, () => 0.75 + 0.4 * r()) });
+  }
+  return out;
+}
+const inTank = (x, y) => { const t = PH.tank; return x >= t.x0 && x <= t.x1 && y >= t.y0 && y <= t.y1; };
+function distToEdge(p) {
+  const t = PH.tank; let d = Infinity;
+  if (p.vx > 1e-9) d = Math.min(d, (t.x1 - p.x) / p.vx); else if (p.vx < -1e-9) d = Math.min(d, (t.x0 - p.x) / p.vx);
+  if (p.vy > 1e-9) d = Math.min(d, (t.y1 - p.y) / p.vy); else if (p.vy < -1e-9) d = Math.min(d, (t.y0 - p.y) / p.vy);
+  return Math.max(0, d);
+}
+// nova direção depois de bater numa partícula: partículas maiores desviam mais para a frente
+function scatterDir(p) {
+  const g = PH.g, u = Math.random();
+  let mu;
+  if (Math.abs(g) < 1e-3) mu = 2 * u - 1;
+  else { const s = (1 - g * g) / (1 - g + 2 * g * u); mu = (1 + g * g - s * s) / (2 * g); }
+  const th = Math.acos(clamp(mu, -1, 1)) * (Math.random() < 0.5 ? -1 : 1);
+  const c = Math.cos(th), s = Math.sin(th);
+  const vx = p.vx * c - p.vy * s, vy = p.vx * s + p.vy * c;
+  p.vx = vx; p.vy = vy;
+}
+function advance(p, dist, rec, quiet) {
+  let rem = dist, guard = 0;
+  const t = PH.tank, sc = PH.scr;
+  while (rem > 1e-6 && p.alive && guard++ < 400) {
+    if (!inTank(p.x, p.y)) {
+      // fora do copo a luz anda em linha reta
+      let dEnter = Infinity;
+      if (p.vx > 0 && p.x < t.x0) { const s = (t.x0 - p.x) / p.vx, yy = p.y + p.vy * s; if (yy >= t.y0 && yy <= t.y1) dEnter = s + 1e-3; }
+      const m = Math.min(rem, dEnter);
+      const x0 = p.x, y0 = p.y;
+      p.x += p.vx * m; p.y += p.vy * m; rem -= m;
+      if (p.n > 0) p.out += m;
+      if (x0 < sc.x && p.x >= sc.x && p.vx > 0) {
+        const yHit = y0 + (p.y - y0) * (sc.x - x0) / (p.x - x0);
+        if (yHit >= sc.y0 && yHit <= sc.y1) {
+          if (p.n === 0) PH.cnt.direct++; else PH.cnt.scat++;
+          p.x = sc.x; p.y = yHit; p.alive = false;
+        }
+      }
+      if (p.alive && p.vis && p.out > p.outMax) {
+        const back = p.out - p.outMax;
+        p.x -= p.vx * back; p.y -= p.vy * back; p.alive = false;
+      }
+      if (p.x < -30 || p.x > PH.W + 30 || p.y < -30 || p.y > PH.H + 30) p.alive = false;
+      if (rec) rec.push([p.x, p.y]);
+      continue;
+    }
+    const de = distToEdge(p);
+    const s = PH.tauPx > 0 ? -Math.log(1 - Math.random()) / PH.tauPx : Infinity;
+    const a = PH.alphaPx > 0 ? -Math.log(1 - Math.random()) / PH.alphaPx : Infinity;
+    const m = Math.min(rem, de + 1e-3, s, a);
+    p.x += p.vx * m; p.y += p.vy * m; rem -= m;
+    if (m === a) { p.alive = false; break; }
+    if (m === s) {
+      scatterDir(p); p.n++;
+      if (rec) rec.push([p.x, p.y]);
+      else if (!quiet && PH.flashes.length < 160) PH.flashes.push({ x: p.x, y: p.y, t: 0 });
+      if (p.n > PH_MAXSCAT) { p.alive = false; PH.cnt.side += 0.3; break; }   // luz difusa: parte sai na direção de quem observa
+    }
+    if (!inTank(p.x, p.y)) {
+      if (p.y >= t.y1) PH.cnt.side++;          // saiu por baixo, na direção do olho
+      if (rec) rec.push([p.x, p.y]);
+    }
+  }
+}
+function spawnPhoton() { PH.photons.push({ x: PH.lx, y: PH.ly + (Math.random() - 0.5) * 3, vx: 1, vy: 0, n: 0, out: 0, outMax: PH_OUTMAX, vis: true, alive: true }); }
+function stepPhotons(dt, quiet) {
+  PH.emit += dt * PH_RATE;
+  while (PH.emit >= 1) { PH.emit -= 1; spawnPhoton(); }
+  const dist = PH_SPEED * dt;
+  for (const p of PH.photons) advance(p, dist, null, quiet);
+  PH.photons = PH.photons.filter(p => p.alive);
+  for (const f of PH.flashes) f.t += dt;
+  PH.flashes = PH.flashes.filter(f => f.t < 0.35);
+}
+// para onde vai a luz, em média: muitos pontos de luz seguidos até o fim, sem desenhar
+function measure(n) {
+  PH.cnt = { direct: 0, side: 0, scat: 0 };
+  for (let i = 0; i < n; i++) {
+    const p = { x: PH.lx, y: PH.ly + (Math.random() - 0.5) * 3, vx: 1, vy: 0, n: 0, out: 0, alive: true };
+    advance(p, 3000, null, true);
+  }
+  const r = { direct: PH.cnt.direct / n, side: PH.cnt.side / n, scat: PH.cnt.scat / n };
+  PH.cnt = { direct: 0, side: 0, scat: 0 };
+  return r;
+}
+// sem animação: caminhos completos de alguns pontos de luz, desenhados parados
+function tracePaths() {
+  const paths = [];
+  for (let i = 0; i < 60; i++) {
+    const p = { x: PH.lx, y: PH.ly + (i % 7 - 3) * 0.4, vx: 1, vy: 0, n: 0, out: 0, outMax: 60, vis: true, alive: true };
+    const rec = [[p.x, p.y]];
+    advance(p, 3000, rec, true);
+    paths.push(rec);
+  }
+  PH.cnt = { direct: 0, side: 0, scat: 0 };
+  return paths;
+}
+function drawEye(ctx, x, y, glow) {
+  const red = LIGHT.ch[0].rgb;
+  if (glow > 0.02) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 46);
+    g.addColorStop(0, rgba(red, 0.5 * glow)); g.addColorStop(1, rgba(red, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 46, 0, 6.283); ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(232,236,242,0.85)'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(x - 22, y); ctx.quadraticCurveTo(x, y - 17, x + 22, y); ctx.quadraticCurveTo(x, y + 17, x - 22, y); ctx.closePath(); ctx.stroke();
+  ctx.fillStyle = rgba(mixc([62, 68, 80], red, clamp(glow, 0, 1)));
+  ctx.beginPath(); ctx.arc(x, y, 6.5, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#05070a'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 6.283); ctx.fill();
+}
+function phLabel(ctx, txt, x, y, align, fs) {
+  ctx.font = `500 ${fs}px "Instrument Sans", system-ui, sans-serif`;
+  ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, fs * 0.3); ctx.strokeStyle = 'rgba(5,7,10,0.9)';
+  ctx.strokeText(txt, x, y);                        // contorno escuro: o nome fica legível sobre a luz
+  ctx.fillStyle = 'rgba(169,178,193,0.95)'; ctx.fillText(txt, x, y); ctx.textAlign = 'start';
+}
+function drawPhoton(time) {
+  const cv = PH.cv, ctx = PH.ctx;
+  if (!cv.width) return;
+  const k = cv.width / PH.W; ctx.setTransform(k, 0, 0, k, 0, 0);
+  const t = PH.tank, red = LIGHT.ch[0].rgb;
+  ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, PH.W, PH.H);
+  // mistura dentro do copo
+  ctx.fillStyle = 'rgba(120,150,190,0.07)'; ctx.fillRect(t.x0, t.y0, t.x1 - t.x0, t.y1 - t.y0);
+  ctx.strokeStyle = 'rgba(230,240,255,0.3)'; ctx.lineWidth = 1.5; ctx.strokeRect(t.x0, t.y0, t.x1 - t.x0, t.y1 - t.y0);
+  // partículas (desenho fora de escala; o tamanho real está na figura de baixo)
+  for (const q of PH.parts) {
+    const jx = q.grain || REDUCED ? 0 : 0.7 * Math.sin(time * 2.7 + q.ph), jy = q.grain || REDUCED ? 0 : 0.7 * Math.cos(time * 2.3 + q.ph * 1.3);
+    if (q.grain) {
+      ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot);
+      ctx.fillStyle = `rgba(226,218,200,${q.a})`; ctx.beginPath();
+      q.shape.forEach((s, i) => { const an = i / q.shape.length * 6.283, xx = Math.cos(an) * q.r * s, yy = Math.sin(an) * q.r * s; if (i) ctx.lineTo(xx, yy); else ctx.moveTo(xx, yy); });
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    } else {
+      ctx.fillStyle = `rgba(226,230,240,${q.a})`;
+      ctx.beginPath(); ctx.arc(q.x + jx, q.y + jy, q.r, 0, 6.283); ctx.fill();
+    }
+  }
+  // anteparo e ponto de luz que chega reto
+  const sc = PH.scr;
+  ctx.fillStyle = 'rgb(40,46,56)'; ctx.fillRect(sc.x, sc.y0, 10, sc.y1 - sc.y0);
+  ctx.globalCompositeOperation = 'lighter';
+  const halo = clamp(Math.sqrt(PH.stat.scat) * 0.7, 0, 0.7);
+  if (halo > 0.02) {
+    const hg = ctx.createRadialGradient(sc.x, PH.ly, 0, sc.x, PH.ly, 70);
+    hg.addColorStop(0, rgba(red, 0.4 * halo)); hg.addColorStop(1, rgba(red, 0));
+    ctx.fillStyle = hg; ctx.fillRect(sc.x - 6, sc.y0, 22, sc.y1 - sc.y0);
+  }
+  const spot = clamp(Math.sqrt(PH.stat.direct), 0, 1);
+  if (spot > 0.02) {
+    const sg = ctx.createRadialGradient(sc.x + 2, PH.ly, 0, sc.x + 2, PH.ly, 26);
+    sg.addColorStop(0, rgba(mixc(red, [255, 255, 255], 0.5 * spot), spot)); sg.addColorStop(0.3, rgba(red, 0.75 * spot)); sg.addColorStop(1, rgba(red, 0));
+    ctx.fillStyle = sg; ctx.fillRect(sc.x - 8, PH.ly - 26, 26, 52);
+  }
+  // pontos de luz
+  ctx.lineCap = 'round';
+  if (PH.paths) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = rgba(red, 0.4); ctx.lineWidth = 1.2;
+    for (const path of PH.paths) { ctx.beginPath(); path.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); }
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    for (const f of PH.flashes) {
+      const a = 1 - f.t / 0.35;
+      const fg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 7);
+      fg.addColorStop(0, `rgba(255,110,90,${0.85 * a})`); fg.addColorStop(1, rgba(red, 0));
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(f.x, f.y, 7, 0, 6.283); ctx.fill();
+    }
+    ctx.lineWidth = 2.2;
+    const LV = [0.95, 0.7, 0.48, 0.3];
+    for (let j = 0; j < LV.length; j++) {
+      ctx.strokeStyle = rgba(red, LV[j]); ctx.beginPath();
+      for (const p of PH.photons) {
+        if (Math.min(3, Math.floor(p.out / 60)) !== j) continue;
+        ctx.moveTo(p.x - p.vx * 9, p.y - p.vy * 9); ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  // laser
+  ctx.fillStyle = 'rgb(46,52,62)'; rr(ctx, 26, PH.ly - 11, PH.lx - 30, 22, 5); ctx.fill();
+  ctx.fillStyle = 'rgb(30,34,42)'; ctx.fillRect(PH.lx - 8, PH.ly - 6, 8, 12);
+  ctx.globalCompositeOperation = 'lighter';
+  const ag = ctx.createRadialGradient(PH.lx, PH.ly, 0, PH.lx, PH.ly, 13);
+  ag.addColorStop(0, rgba(red, 0.95)); ag.addColorStop(1, rgba(red, 0));
+  ctx.fillStyle = ag; ctx.beginPath(); ctx.arc(PH.lx, PH.ly, 13, 0, 6.283); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  // olho de quem observa de lado
+  drawEye(ctx, PH.eye.x, PH.eye.y, clamp(Math.sqrt(PH.stat.side * 5), 0, 1));
+  // nomes
+  const fs = clamp(11.5 / Math.max(0.01, cv.clientWidth / PH.W), 13, 26);
+  phLabel(ctx, 'laser', (26 + PH.lx) / 2, PH.ly + 14 + fs / 2, 'center', fs);
+  phLabel(ctx, 'mistura no copo', t.x0 + 6, t.y0 - 6 - fs / 2, 'left', fs);
+  phLabel(ctx, 'anteparo', sc.x + 5, sc.y1 + 8 + fs / 2, 'center', fs);
+  phLabel(ctx, 'quem observa de lado', PH.eye.x + 32, PH.eye.y, 'left', fs);
+}
+
+/* ---------- tamanho comparado à onda, na mesma escala ---------- */
+const SZ = { cv: $('#size-cv'), W: 900 };
+function sizeRatioText(d) {
+  const lamW = LIGHT.lam / PHYS.nW, r = d / lamW;
+  if (r < 0.5) return `cerca de ${fmtTimesDe(1 / r)} vezes menor que esse comprimento de onda`;
+  if (r < 0.8) return 'um pouco menor que esse comprimento de onda';
+  if (r <= 1.25) return 'quase do tamanho desse comprimento de onda';
+  if (r <= 2) return 'um pouco maior que esse comprimento de onda';
+  return `cerca de ${fmtTimesDe(r)} vezes maior que esse comprimento de onda`;
+}
+// tamanho com a conversão para nanômetros quando está em micrômetros (para comparar com a régua)
+function fmtLenNm(nm) {
+  const t = fmtLen(nm);
+  return /µm/.test(t) ? `${t} (${new Intl.NumberFormat('pt-BR').format(Number(nm.toPrecision(2)))} nm)` : t;
+}
+function drawSize() {
+  const cv = SZ.cv; if (!cv || !cv.width) return;
+  const ctx = cv.getContext('2d');
+  const W = SZ.W, H = Math.round(W * cv.height / cv.width);
+  const k = cv.width / W; ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.fillStyle = '#05070a'; ctx.fillRect(0, 0, W, H);
+  const fs = clamp(12 / Math.max(0.01, cv.clientWidth / W), 14, 34);   // letras legíveis também no celular
+  const font = (w, px) => `${w} ${px}px "Instrument Sans", system-ui, sans-serif`;
+  const ex = EXAMPLES.find(e => e.id === DT.ex);
+  const lamW = LIGHT.lam / PHYS.nW;               // onda dentro da água
+  const s = W / (3.2 * lamW);                     // pixels por nanômetro
+  const red = LIGHT.ch[0].rgb;
+  const big = ex.d > 3 * lamW;
+  const amp = big ? 26 : 52;
+  const yBr = 0.7 * fs + fs + 8;                  // chave que marca uma onda
+  const yw = yBr + 14 + amp;                      // linha central da onda
+  // texto centrado em x, quebrado em linhas se não couber na largura da figura
+  const label = (txt, x, y, lh) => {
+    const words = txt.split(' '), lines = [];
+    let cur = '';
+    for (const w of words) { const t = cur ? cur + ' ' + w : w; if (cur && ctx.measureText(t).width > W - 48) { lines.push(cur); cur = w; } else cur = t; }
+    lines.push(cur);
+    lines.forEach((ln, i) => { const tw = ctx.measureText(ln).width; ctx.fillText(ln, clamp(x, tw / 2 + 24, W - tw / 2 - 24), y + i * lh); });
+    return lines.length;
+  };
+  // grão maior que a janela: só a borda dele aparece
+  let grainTop = 0;
+  if (big) {
+    grainTop = yw + amp + 18;
+    const R = ex.d / 2 * s;
+    const gg = ctx.createLinearGradient(0, grainTop, 0, H);
+    gg.addColorStop(0, 'rgb(214,205,186)'); gg.addColorStop(1, 'rgb(150,142,124)');
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(W / 2, grainTop + R, R, 0, Math.PI * 2); ctx.fill();
+  }
+  // onda de luz
+  ctx.strokeStyle = rgba(red, 0.95); ctx.lineWidth = 2.4; ctx.beginPath();
+  for (let x = 0; x <= W; x += 2) { const y = yw - amp * Math.sin(2 * Math.PI * x / (lamW * s) - Math.PI / 2); if (x) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  ctx.stroke();
+  // um comprimento de onda marcado, de uma crista à seguinte
+  const xa = 1.5 * lamW * s, xb = 2.5 * lamW * s;
+  ctx.strokeStyle = 'rgba(232,236,242,0.8)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(xa, yBr); ctx.lineTo(xb, yBr); ctx.moveTo(xa, yBr - 5); ctx.lineTo(xa, yBr + 5); ctx.moveTo(xb, yBr - 5); ctx.lineTo(xb, yBr + 5); ctx.stroke();
+  ctx.font = font(500, fs); ctx.fillStyle = 'rgba(232,236,242,0.95)'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  label('comprimento de onda na água: cerca de ' + fmtLen(lamW), (xa + xb) / 2, yBr - 0.35 * fs, 0);
+  // partícula na mesma escala
+  ctx.textBaseline = 'top';
+  if (big) {
+    ctx.fillStyle = 'rgba(30,26,20,0.92)'; ctx.font = font(600, fs * 1.05);
+    const gl = `${ex.part}: cerca de ${fmtLen(ex.d)}, maior que toda esta janela`;
+    ctx.textBaseline = 'middle';
+    const n = ctx.measureText(gl).width > W - 48 ? 2 : 1;
+    label(gl, W / 2, (grainTop + H - 1.4 * fs) / 2 - (n - 1) * 0.6 * fs, 1.25 * fs);
+  } else {
+    const px = 0.25 * W, rad = Math.max(2.2, ex.d / 2 * s);
+    const gr = ctx.createRadialGradient(px - rad * 0.3, yw - rad * 0.3, rad * 0.1, px, yw, rad);
+    gr.addColorStop(0, 'rgba(250,244,232,1)'); gr.addColorStop(1, 'rgba(190,180,160,1)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(px, yw, rad, 0, Math.PI * 2); ctx.fill();
+    const tiny = ex.d / 2 * s < 3;
+    if (tiny) {                                     // pequena demais: marca onde ela está
+      ctx.strokeStyle = 'rgba(232,236,242,0.75)'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.arc(px, yw, Math.max(14, 0.5 * fs), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.font = font(500, fs); ctx.fillStyle = 'rgba(232,236,242,0.95)';
+    label(`${ex.part}: cerca de ${fmtLen(ex.d)}`, px, Math.max(yw + rad + 10, yw + amp + 12), 1.25 * fs);
+  }
+  // barra de escala
+  const nice = 200, bw = nice * s, bx = 18, by = H - 0.9 * fs;
+  ctx.strokeStyle = big ? 'rgba(30,26,20,0.85)' : 'rgba(232,236,242,0.85)'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by); ctx.moveTo(bx, by - 4); ctx.lineTo(bx, by + 4); ctx.moveTo(bx + bw, by - 4); ctx.lineTo(bx + bw, by + 4); ctx.stroke();
+  ctx.font = `${0.86 * fs}px "IBM Plex Mono", ui-monospace, monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.fillStyle = big ? 'rgba(30,26,20,0.9)' : 'rgba(232,236,242,0.9)';
+  ctx.fillText(fmtLen(nice), bx, by - 6);
+  ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+}
+function updateSizeCap() {
+  const ex = EXAMPLES.find(e => e.id === DT.ex);
+  const lamW = LIGHT.lam / PHYS.nW;
+  let txt = `A partícula e a onda de luz estão desenhadas na mesma escala. O comprimento de onda do laser vermelho é de cerca de ${fmtLen(LIGHT.lam)} no ar e cai para cerca de ${fmtLen(lamW)} dentro da água; a cor continua a mesma. ${ex.part} tem cerca de ${fmtLenNm(ex.d)} e é ${sizeRatioText(ex.d)}.`;
+  if (ex.d / 2 * (SZ.W / (3.2 * lamW)) < 3) txt += ' Nesta escala ela é só um pontinho.';
+  $('#size-cap').textContent = txt;
+}
+// régua com as três faixas e a posição da mistura escolhida
+const ZONES = [
+  { t: 'sol', label: 'Solução', a: Math.log10(0.3), b: 0, v0: 0, v1: 250 },
+  { t: 'col', label: 'Coloide', a: 0, b: 3, v0: 250, v1: 650 },
+  { t: 'sus', label: 'Suspensão', a: 3, b: 5, v0: 650, v1: 1000 },
+];
+function vFromLogd(l) { for (const z of ZONES) if (l <= z.b) return z.v0 + (Math.max(l, z.a) - z.a) / (z.b - z.a) * (z.v1 - z.v0); return 1000; }
+const NS = 'http://www.w3.org/2000/svg';
+function sv(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function wl2rgb(nm) {
+  let r = 0, g = 0, b = 0;
+  if (nm < 440) { r = -(nm - 440) / 60; b = 1; } else if (nm < 490) { g = (nm - 440) / 50; b = 1; } else if (nm < 510) { g = 1; b = -(nm - 510) / 20; } else if (nm < 580) { r = (nm - 510) / 70; g = 1; } else if (nm < 645) { r = 1; g = -(nm - 645) / 65; } else { r = 1; }
+  const f = nm < 420 ? 0.3 + 0.7 * (nm - 380) / 40 : nm > 680 ? 0.3 + 0.7 * (750 - nm) / 70 : 1;
+  return `rgb(${Math.round(255 * r * f)},${Math.round(255 * g * f)},${Math.round(255 * b * f)})`;
+}
+function zoneColor(t) { return getComputedStyle(document.documentElement).getPropertyValue('--' + t).trim(); }
+function renderRuler() {
+  const svg = $('#ruler'); const W = svg.clientWidth || 600, H = 80;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = '';
+  const M = 10, X = v => M + v / 1000 * (W - 2 * M);
+  const ex = EXAMPLES.find(e => e.id === DT.ex);
+  // posição da mistura escolhida
+  const xm = X(vFromLogd(Math.log10(ex.d)));
+  sv('path', { d: `M${xm - 6} 14 L${xm + 6} 14 L${xm} 21 Z`, class: 'sv-mark' }, svg);
+  const lab = sv('text', { x: clamp(xm, 40, W - 40), y: 10, 'text-anchor': 'middle', class: 'sv-zone' }, svg); lab.textContent = ex.label;
+  for (const z of ZONES) {
+    const x0 = X(z.v0), x1 = X(z.v1);
+    sv('rect', { x: x0, y: 24, width: x1 - x0 - (z.v1 < 1000 ? 2 : 0), height: 24, rx: 5, fill: zoneColor(z.t), 'fill-opacity': 0.26 }, svg);
+    const tx = sv('text', { x: (x0 + x1) / 2, y: 40.5, 'text-anchor': 'middle', class: 'sv-zone' }, svg); tx.textContent = z.label;
+  }
+  // faixa da luz visível
+  const defs = sv('defs', {}, svg);
+  const lg = sv('linearGradient', { id: 'spec', x1: 0, x2: 1, y1: 0, y2: 0 }, defs);
+  for (let i = 0; i <= 12; i++) sv('stop', { offset: i / 12, 'stop-color': wl2rgb(400 + 300 * i / 12) }, lg);
+  const vx0 = X(vFromLogd(Math.log10(400))), vx1 = X(vFromLogd(Math.log10(700)));
+  sv('rect', { x: vx0, y: 54, width: Math.max(3, vx1 - vx0), height: 5, rx: 2, fill: 'url(#spec)' }, svg);
+  const vl = sv('text', { x: vx0 - 6, y: 62, 'text-anchor': 'end', class: 'sv-lab sv-sans' }, svg); vl.textContent = 'luz visível';
+  for (const [v, txt] of [[250, '1 nm'], [650, '1.000 nm']]) {
+    const x = X(v) - 1;
+    sv('line', { x1: x, x2: x, y1: 22, y2: 50, class: 'sv-tick' }, svg);
+    const tt = sv('text', { x, y: 77, 'text-anchor': 'middle', class: 'sv-lab' }, svg); tt.textContent = txt;
+  }
+}
+function layoutCharts() { if (S.tab === 'dentro') { renderRuler(); drawSize(); } }
+function setExample(id) {
+  DT.ex = id;
+  const smp = SAMPLES[id];
+  const o = opticsAt(smp, LIGHT.lam, 0, 0.035, 1);
+  PH.tauPx = o.tauP * PX_M; PH.alphaPx = o.alpha * PX_M; PH.g = o.g;
+  PH.T = Math.exp(-(o.tauP + o.alpha) * PHYS.L);
+  PH.parts = makeParts(id); PH.photons = []; PH.flashes = []; PH.emit = 0;
+  PH.stat = measure(2400);
+  if (REDUCED) PH.paths = tracePaths();
+  else {
+    // a luz leva cerca de 2 s para atravessar: avança a animação antes de mostrar, para já começar com o feixe inteiro
+    PH.paths = null;
+    for (let i = 0; i < 150; i++) stepPhotons(1 / 60, true);
+    PH.flashes = []; PH.cnt = { direct: 0, side: 0, scat: 0 };
+  }
+  $$('#ex-pick button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.ex === id)));
+  $('#reg-dot').style.setProperty('--c', TYPES[smp.type].color);
+  $('#reg-title').textContent = TYPES[smp.type].name;
+  $('#reg-text').textContent = EX_TEXT[id];
+  $('#m-straight').style.width = (PH.T * 100).toFixed(1) + '%';
+  $('#m-scat').style.width = ((1 - PH.T) * 100).toFixed(1) + '%';
+  updateSizeCap(); drawSize(); renderRuler();
+  markDirty();
+}
+function drawDentro(time, dt) {
+  if (!REDUCED) stepPhotons(dt, false);
+  drawPhoton(time);
+}
+
+/* =========================================================
+   9. Abas e laço de animação
+   ========================================================= */
+const TABS = ['bancada', 'dentro'];
+function setTab(id, focus) {
+  if (!TABS.includes(id)) id = 'bancada';
+  S.tab = id;
+  TABS.forEach(t => {
+    const tab = $('#tab-' + t), panel = $('#p-' + t);
+    const on = t === id;
+    tab.setAttribute('aria-selected', String(on)); tab.tabIndex = on ? 0 : -1;
+    panel.hidden = !on;
+  });
+  if (focus) $('#tab-' + id).focus();
+  store.set('tab', id);
+  try { history.replaceState(null, '', '#' + id); } catch (e) { /* sem histórico */ }
+  requestAnimationFrame(() => {
+    canvases.forEach((_, cv) => fitCanvas(cv));
+    if (id === 'dentro') { renderRuler(); drawSize(); }
+    markDirty();
+  });
+}
+let lastNow = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, Math.max(0, (now - lastNow) / 1000)); lastNow = now;
+  const time = now / 1000;
+  if (!document.hidden) {
+    if (!REDUCED || S.dirty) {
+      if (S.tab === 'bancada') drawBancada(time);
+      else drawDentro(time, dt);
+      S.dirty = false;
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* =========================================================
+   10. Inicialização e eventos
+   ========================================================= */
+function init() {
+  // abas
+  TABS.forEach((t, i) => {
+    const tab = $('#tab-' + t);
+    tab.addEventListener('click', () => setTab(t));
+    tab.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const j = (i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length; setTab(TABS[j], true); }
+      if (e.key === 'Home') { e.preventDefault(); setTab(TABS[0], true); }
+      if (e.key === 'End') { e.preventDefault(); setTab(TABS[TABS.length - 1], true); }
+    });
+  });
+  // bancada
+  $$('[data-preset]').forEach(b => b.addEventListener('click', () => setPreset(b.dataset.preset)));
+  setPreset('banner');
+  // por dentro
+  PH.ctx = registerCanvas(PH.cv);
+  registerCanvas(SZ.cv);
+  const pick = $('#ex-pick');
+  for (const ex of EXAMPLES) {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'radio'); b.dataset.ex = ex.id; b.textContent = ex.label;
+    b.addEventListener('click', () => setExample(ex.id));
+    pick.appendChild(b);
+  }
+  setExample(DT.ex);
+  // aba inicial
+  const fromHash = (location.hash || '').replace('#', '');
+  setTab(TABS.includes(fromHash) ? fromHash : store.get('tab', 'bancada'));
+  window.addEventListener('hashchange', () => { const h = (location.hash || '').replace('#', ''); if (TABS.includes(h) && h !== S.tab) setTab(h); });
+  // tela cheia: o botão só aparece onde o navegador permite (no iPad, Safari aberto direto na página)
+  const fsBtn = $('#fs-btn'), root = document.documentElement;
+  const fsOn = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
+    fsBtn.hidden = false;
+    fsBtn.addEventListener('click', () => {
+      try {
+        if (fsOn()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        else {
+          const r = (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+          if (r && r.catch) r.catch(() => {});
+        }
+      } catch (e) { /* o navegador recusou */ }
+    });
+    const syncFs = () => { $('#fs-label').textContent = fsOn() ? 'Sair da tela cheia' : 'Tela cheia'; };
+    document.addEventListener('fullscreenchange', syncFs);
+    document.addEventListener('webkitfullscreenchange', syncFs);
+  }
+  // quando as fontes terminam de carregar, redesenha os textos das figuras
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layoutCharts(); markDirty(); });
+  requestAnimationFrame(frame);
+}
+init();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+</script>
+</body>
+</html>
